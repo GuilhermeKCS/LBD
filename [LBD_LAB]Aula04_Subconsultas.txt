@@ -1,0 +1,311 @@
+Fatec Sorocaba - ADS
+Aula Prática de LBD  - atualizado em 09-09-2022
+Prof. Maria Angélica C. de Andrade Cardieri
+-------------------------------------------------------------------------------------------------------------------
+
+Subconsultas
+============
+
+Uma subquery ou subconsulta  é quando o resultado de uma consulta é utilizado por 
+outra consulta, de forma encadeada e contida no mesmo comando SQL.
+
+
+Restrições:
+
+•	A query interna deve ser usada dentro de parênteses
+•	A subquery não pode conter a cláusula order by
+•	Quando utilizando múltiplas colunas em uma subquery, estas colunas devem aparecer na mesma ordem  
+         e com os mesmos tipos de dados da query principal, além do mesmo número de colunas
+•	Podem ser utilizados operadores lógicos 
+
+
+
+select ......from ....
+        where a =  (select a from ... where....);
+
+
+
+Exemplo1: Listar a descrição do produto que tem o preço unitário maior que a média.
+
+select * from tb_produto
+where valor_unit > 
+
+ (select avg(valor_unit) from TB_PRODUTO);
+
+ou com subconsulta:
+
+        select descricao from tb_produto 
+        where valor_unit > (select avg(valor_unit) from TB_PRODUTO);
+
+	>   <    >=   <=   <>
+
+
+Exemplo2: Listar o nome dos clientes que moram na mesma cidade do 'João da Silva';
+
+
+    select nomecliente from Tb_cliente
+    where nomecliente <> 'João da Silva'  
+    and cidade = (select cidade from Tb_cliente where nomecliente = 'João da Silva');	
+
+    x in (x,y,z)
+
+
+Exemplo3: Listar o nome dos clientes que tem pedidos
+
+
+** Pode ser feito usando junção:
+
+select nomecliente from TB_cliente inner join tb_pedido
+on tb_pedido.codcliente = tb_cliente.codcliente;
+
+dar preferência a junção, pois é mais rápida a execução e o SGBD pode usar os índices criados
+
+
+** usando subconsultas:
+
+exibir o nome dos clientes que tem pedidos:
+
+ select nomecliente from TB_cliente
+ where codcliente in ( select codcliente from TB_pedido);
+
+	não é tão eficiente.	
+
+
+Exemplo4: Listar o nome dos clientes que não tem pedidos
+
+select codcliente, nomecliente from tb_cliente
+ where codcliente not in ( select codcliente from TB_pedido);
+
+-- usando operador da algebra relacional(mais restrita a exibição)
+select codcliente from TB_cliente
+minus 
+select  codcliente  from TB_pedido
+
+
+select nome_cliente from cliente,pedido
+where pedido.cod_cliente <> cliente.cod_cliente; --- não funciona
+
+
+
+
+Exemplo 5: Listar o nome do vendedor que não tem pedidos com prazo de entrega em fevereiro/2020.
+========
+
+
+ select tb_vendedor.codvendedor,nomevendedor
+ from Tb_vendedor, tb_pedido
+ where Tb_pedido.codvendedor = tb_vendedor.codvendedor and 
+ to_char(prazo_entrega,'mm/yyyy') <> '02/2020'; 
+
+
+
+
+A consulta acima não contempla o vendedor que nunca fez pedidos
+
+
+select nomevendedor from tb_vendedor
+where codvendedor not in (select codvendedor from tb_pedido
+                            where to_char(prazo_entrega,'mm/yyyy') = '02/2020')
+
+
+
+para se filtrar  08 de 2020 podemos usar:
+
+
+where to_char(prazo_entrega,'mm/yyyy') = '08/2020'
+
+ou
+ where prazo_entrega between '01/08/2020' and '31/08/2020';
+
+
+ year(prazo_entrega) = 2020 and month(prazo_entrega) = 08 sql server
+
+(extract year from prazo_entrega)  = 2020 and (extract month from prazo_entrega) 
+
+
+Exemplo 6: Listar o código do produto que tem o menor preço.
+============================================================
+
+select min(valor_unitario), cod_produto from produto   ; Errado não funciona
+
+
+ select cod_produto, valor_unitario from produto
+  where valor_unitario = (select min(valor_unitario) from produto); 
+
+correto
+
+
+exercicio extra:
+
+Listar o codigo dos  vendedores que fizeram  mais pedidos que o vendedor de nome ´Carlos Sola'
+
+
+ select tb_pedido.codvendedor, nomevendedor,count(*) 
+ from tb_pedido,tb_vendedor
+ where tb_pedido.codvendedor = tb_vendedor.codvendedor
+ group by tb_pedido.codvendedor, nomevendedor
+ having count(*)>  (select count(*) from tb_pedido,tb_vendedor
+	where tb_pedido.codvendedor = tb_vendedor.codvendedor
+	and nomevendedor = 'Carlos Sola');
+
+================================================
+obs sobre o uso do operador in
+
+   select * from cliente 
+   where cidade in ('Sorocaba','Itu');
+
+é a mesma coisa que:
+
+   select * from cliente 
+   where cidade = 'Sorocaba'  or cidade = 'Itu';
+
+===========================================================================
+
+operadores:
+
+
+= > < <> <= >=         => usar qdo a subconsulta compara 1 elem.
+
+in  
+not in                 => usar qdo a subconsulta devolve vários elem.			
+                	elementos (testa se pertence a um conjunto)
+
+
+Exists
+not exists	       =>  Testa se o select interno é verdadeiro 	
+    			   ou falso
+
+
+===========================================
+Exercício subconsultas em aula:
+
+select * from tb_vendedor
+select * from tb_pedido
+select * from tb_cliente
+
+Listar o codigo dos  vendedores que fizeram  mais pedidos que o 
+vendedor de nome 'Carlos Sola'
+
+
+ select tb_pedido.codvendedor, nomevendedor,count(*) 
+ from tb_pedido,tb_vendedor
+ where tb_pedido.codvendedor = tb_vendedor.codvendedor
+ group by tb_pedido.codvendedor, nomevendedor
+ having count(*)>  (select count(*) from tb_pedido,tb_vendedor
+	where tb_pedido.codvendedor = tb_vendedor.codvendedor
+	and nomevendedor = 'Carlos Sola');
+    
+---------------------------------------------------------------------------------------------------------
+Complemento aula de Subconsultas  - Parte 02
+
+    Operador EXISTS  -  executa a consulta externa se a interna for Verdadeira
+
+select * from tabela where exists ( select ...)             se retornar 1 ou + linhas é verdadeiro
+                                                                                   se retornar zero linha é Falso.
+    
+    Exemplo1:  listar o nome dos clientes que tem pedidos
+    
+    -- Comparação Usando IN  
+
+    select nomecliente from tb_cliente
+    where codcliente in (select codcliente from tb_pedido);
+    
+    -- usando Exists  - comando incorreto
+
+    select nomecliente from tb_cliente
+    where exists (select codcliente from tb_pedido) 
+                       
+    -- Exists -- comando correto
+    
+     select nomecliente from tb_cliente
+    where exists (select 'a' from tb_pedido 
+                   where tb_cliente.codcliente = tb_pedido.codcliente);
+    
+    select * from tb_cliente;
+ -------------------------------------------------------------------------------------------------
+ Exemplo2: Listar nome dos clientes que não tem pedidos
+ 
+ NOT exists   --  executa a consulta externa se a interna for FALSO
+    
+ usando not in
+ 
+ select nomecliente from tb_cliente
+ where codcliente not in (select codcliente from tb_pedido);
+ 
+ usando not exists
+ 
+    select nomecliente from tb_cliente
+    where not exists (select codcliente from tb_pedido 
+                   where tb_cliente.codcliente = tb_pedido.codcliente);
+                   
+                   
+ Exercício: Exibir a frase "não existem pedidos para o cliente 33" 
+ se isso for verdade.
+ 
+ select 'oieee' from dual
+ 
+ 
+ ----------------------------------------------------------------------------------------------------           
+Usando subconsultas com update e delete
+
+EX4: Excluir o cliente que não tem pedidos.
+
+
+delete Tb_cliente
+where codcliente not in (select codcliente from TB_pedido);
+
+
+select * from tb_cliente;
+
+rollback;
+
+delete cliente
+where not exists (select cod_cliente from pedido
+                  where pedido.cod_cliente=cliente.cod_cliente);
+
+
+Ex5: Alterar em menos 20%, o preço dos produtos que não tem pedidos 
+
+update tb_produto
+set valor_unit = valor_unit * 0.80
+where codproduto not in (select codproduto from tb_item_pedido);
+
+rollback;
+
+ou
+
+update produto
+set valor_unitario = valor_unitario * 0.80
+where not exists (select 1 from item_pedido 
+                  where item_pedido.codproduto = produto.codproduto);
+
+
+
+Ex6 com insert
+
+insert into cliente_bkp
+select  from tb_cliente where cidade = 'Sorocaba'
+
+a tabela cliente _bkp tem que já existir
+
+
+=================================================
+criando uma tabela a partir de outra
+
+create table cliente_bkp
+as select * from tb_cliente;
+
+select * from cliente_bkp;
+
+create table cliente_bkp2
+as select * from tb_cliente where codcliente = 9999999;
+
+select * from cliente_bkp2;
+
+create table cliente_bkp
+as select codcliente,nomecliente, cidade from tb_cliente
+
+
+===================================================
+Fazer a lista de Subconsultas para a próxima aula
+
